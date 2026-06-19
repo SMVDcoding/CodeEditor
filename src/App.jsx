@@ -11,6 +11,7 @@ const App = () => {
   const [userName, setUserName] = useState("");
   const [language, setLanguage] = useState("javascript");
   const [code, setCode] = useState("// start code here");
+  const [output, setOutput] = useState("");
   const [copySuccess, setCopySuccess] = useState("");
   const [users, setUsers] = useState([]);
   const [typing, setTyping] = useState("");
@@ -86,6 +87,30 @@ const App = () => {
     socket.emit("languageChange", { roomId, language: newLanguage });
   };
 
+  const runCode = async () => {
+    try {
+      setOutput("Running...");
+
+      const response = await fetch("http://localhost:8000/run", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          code,
+          language,
+        }),
+      });
+
+      const data = await response.json();
+
+      setOutput(data.output || "No Output");
+    } catch (error) {
+      setOutput("Error running code");
+      console.error(error);
+    }
+  };
+
   if (!joined) {
     return (
       <div className="join-container">
@@ -135,6 +160,9 @@ const App = () => {
           <option value="java">Java</option>
           <option value="cpp">C++</option>
         </select>
+        <button className="run-button" onClick={runCode}>
+          ▶ Run Code
+        </button>
         <button className="leave-button" onClick={leaveRoom}>
           Leave Room
         </button>
@@ -143,16 +171,21 @@ const App = () => {
       <div className="editor-wrapper">
         <Editor
           height={"100%"}
-          defaultLanguage={language}
+          // defaultLanguage={language}
           language={language}
           value={code}
           onChange={handleCodeChange}
           theme="vs-dark"
           options={{
-            minimap: { enables: false },
+            minimap: { enabled: false },
             fontSize: 14,
           }}
         />
+      </div>
+
+      <div className="output-box">
+        <h3>Output</h3>
+        <pre>{output}</pre>
       </div>
     </div>
   );
