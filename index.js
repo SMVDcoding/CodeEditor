@@ -2,9 +2,10 @@ import { log } from "console";
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
+import axios from "axios";
 
 const app = express();
-
+app.use(express.json());
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -57,7 +58,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("typing", ({ roomId, userName }) => {
-    socket.to(roomId).emit("user typing", userName);
+    socket.to(roomId).emit("userTyping", userName);
   });
 
   socket.on("languageChange", ({ roomId, language }) => {
@@ -74,6 +75,51 @@ io.on("connection", (socket) => {
 });
 
 const PORT = 8000;
+
+app.post("/run", async (req, res) => {
+  try {
+    const { code, language } = req.body;
+
+    const languageMap = {
+      javascript: 63,
+      python: 71,
+      java: 62,
+      cpp: 54,
+    };
+
+    const language_id = languageMap[language];
+
+    const response = await axios.post(
+      "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true",
+      {
+        source_code: code,
+        language_id,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-RapidAPI-Key":
+            "e008646b5bmsh900cc333e562fb3p168f3ejsn2bc5b57de7c9",
+          "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com",
+        },
+      }
+    );
+
+    res.json({
+      output:
+        response.data.stdout ||
+        response.data.stderr ||
+        response.data.compile_output ||
+        "No Output",
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      output: "Execution Error",
+    });
+  }
+});
 
 server.listen(PORT, () => {
   console.log(`Server running on ${PORT}`);
